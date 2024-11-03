@@ -7,10 +7,12 @@ import { ref, onMounted } from 'vue';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { ARButton } from 'three/examples/jsm/webxr/ARButton.js';
+import WebXRPolyfill from 'webxr-polyfill';
 
 const arContainer = ref(null);
 
 onMounted(() => {
+  const polyfill = new WebXRPolyfill();
   if (navigator.xr) {
     alert("WebXR is supported");
   } else {
