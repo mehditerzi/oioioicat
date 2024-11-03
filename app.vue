@@ -5,63 +5,79 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { ARButton } from 'three/examples/jsm/webxr/ARButton.js';
-import WebXRPolyfill from 'webxr-polyfill';
+import WebXRPolyfill from "webxr-polyfill";
 
 const arContainer = ref(null);
 
 onMounted(() => {
   const polyfill = new WebXRPolyfill();
-  if (navigator.xr) {
-    alert("WebXR is supported");
-  } else {
-    alert("WebXR is not supported on this browser.");
-  }
   // Create the scene
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.xr.enabled = true;
   arContainer.value.appendChild(renderer.domElement);
 
   // Add AR button to the page
-  document.body.appendChild(ARButton.createButton(renderer));
+  document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
 
   // Add a light
   const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
   scene.add(light);
 
-  // Load the .glb model
-  const loader = new GLTFLoader();
-  loader.load(
-      '/oiiaioooooiai_cat.glb', // Replace with your .glb model path
-      (gltf) => {
-        const model = gltf.scene;
-        model.position.set(0, 0, -2); // Position the model
-        model.scale.set(0.5, 0.5, 0.5); // Scale the model
-        scene.add(model);
+  // Create a simple 3D object to place on detected surfaces
+  const geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+  const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+  const cube = new THREE.Mesh(geometry, material);
+  cube.visible = false;
+  scene.add(cube);
 
-        // Animation logic
-        const clock = new THREE.Clock();
-        function animate() {
-          renderer.setAnimationLoop(() => {
-            const delta = clock.getDelta();
-            if (model.rotation) {
-              model.rotation.y += delta * 0.5; // Rotate the model for animation
-            }
-            renderer.render(scene, camera);
+  // XR Session
+  let hitTestSource = null;
+  let hitTestSourceRequested = false;
+
+  function animate() {
+    renderer.setAnimationLoop((timestamp, frame) => {
+      if (frame) {
+        const referenceSpace = renderer.xr.getReferenceSpace();
+        const session = renderer.xr.getSession();
+
+        if (hitTestSourceRequested === false) {
+          session.requestReferenceSpace('viewer').then((refSpace) => {
+            session.requestHitTestSource({ space: refSpace }).then((source) => {
+              hitTestSource = source;
+            });
           });
+
+          session.addEventListener('end', () => {
+            hitTestSourceRequested = false;
+            hitTestSource = null;
+          });
+
+          hitTestSourceRequested = true;
         }
-        animate();
-      },
-      undefined,
-      (error) => {
-        console.error('An error occurred while loading the model:', error);
+
+        if (hitTestSource) {
+          const hitTestResults = frame.getHitTestResults(hitTestSource);
+          if (hitTestResults.length > 0) {
+            const hit = hitTestResults[0];
+            const pose = hit.getPose(referenceSpace);
+
+            cube.visible = true;
+            cube.position.set(pose.transform.position.x, pose.transform.position.y, pose.transform.position.z);
+            cube.updateMatrixWorld(true);
+          }
+        }
       }
-  );
+
+      renderer.render(scene, camera);
+    });
+  }
+
+  animate();
 
   // Handle window resize
   window.addEventListener('resize', () => {
