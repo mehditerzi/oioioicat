@@ -11,6 +11,11 @@ import { ARButton } from 'three/examples/jsm/webxr/ARButton.js';
 const arContainer = ref(null);
 
 onMounted(() => {
+  if (navigator.xr) {
+    alert("WebXR is supported");
+  } else {
+    alert("WebXR is not supported on this browser.");
+  }
   // Create the scene
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
