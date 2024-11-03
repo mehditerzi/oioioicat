@@ -30,7 +30,7 @@ onMounted(() => {
   // Load the .glb model
   const loader = new GLTFLoader();
   loader.load(
-      '/path/to/your/model.glb', // Replace with your .glb model path
+      '/oiiaioooooiai_cat.glb', // Replace with your .glb model path
       (gltf) => {
         const model = gltf.scene;
         model.position.set(0, 0, -2); // Position the model
